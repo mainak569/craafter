@@ -1,5 +1,10 @@
 const Page = () => {
-  return ( <div className="font-extrabold text-rose-500">Hello World</div> );
-}
- 
+
+  return (
+    <div>
+      hello world !
+    </div>
+  );
+};
+
 export default Page;
