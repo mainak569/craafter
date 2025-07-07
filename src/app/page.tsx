@@ -1,24 +1,26 @@
-import { Suspense } from "react";
+"use client";
 
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
-import { getQueryClient, trpc } from "@/trpc/server";
+import { useTRPC } from "@/trpc/client";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
-import { Client } from "./client";
-
-const Page = async () => {
-  const queryClient = getQueryClient();
-  void queryClient.prefetchQuery(trpc.createAI.queryOptions({ text: "Rishu_prefetch" }));
+const Page = () => {
+  const trpc = useTRPC();
+  const invoke = useMutation(trpc.invoke.mutationOptions({
+    onSuccess: ()=> {
+      toast.success("Background job invoked successfully!");
+    }
+  }));
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <Suspense fallback={<div>Loading...</div>}>
-        <Client />
-      </Suspense>
-    </HydrationBoundary>
+    <div className="p-4 max-w-7xl mx-auto bg-black text-white w-full h-screen">
+      <Button disabled={invoke.isPending} onClick={() => invoke.mutate({ text: "Mainak13" })}>
+        Invoke Background Job
+      </Button>
+    </div>
   );
 };
 
 export default Page;
-
-//? using prefetch, we get speed like server, and in the client, we can use the data immediately and use all client related features like useState, useEffect, etc.
