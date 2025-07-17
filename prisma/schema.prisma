@@ -23,7 +23,7 @@ model Project {
   messages Message[]
 }
 
-enum MessaggeRole {
+enum MessageRole {
   USER
   ASSISTANT
 }
@@ -36,7 +36,7 @@ enum MessageType {
 model Message {
   id        String     @id @default(uuid())
   content   String
-  role      MessaggeRole
+  role      MessageRole
   type      MessageType
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt

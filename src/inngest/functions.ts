@@ -118,7 +118,8 @@ export const codeAgentFunction = inngest.createFunction(
                             const content = await sandbox.files.read(file);
                             contents.push({ path: file, content });
                         }
-                        return JSON.stringify(contents);
+                        // return JSON.stringify(contents);
+                        return contents;
                     } catch (error) {
                         console.error(`Error reading files: ${error}`);
                         return `Error: ${error}`;
@@ -171,7 +172,7 @@ export const codeAgentFunction = inngest.createFunction(
             return await prisma.message.create({
                 data: {
                     projectId: event.data.projectId,
-                    content: "Something went wrong. Please try again later. Issue : " + result.state.data.summary,
+                    content: "Something went wrong. Please try again later !",
                     role: "ASSISTANT",
                     type: "ERROR",
                 },
