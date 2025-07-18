@@ -40,7 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma => for prisma client generation
 /src/generated/prisma
 
-inngest/*.db
-inngest/main.db
+# for .inngest/main.db file => local database file used by inngest for development purposes
+.inngest/*.db
