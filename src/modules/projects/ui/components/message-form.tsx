@@ -63,9 +63,9 @@ const MessageForm = ({ projectId }: Props) => {
             <form
                 onSubmit={form.handleSubmit(onSubmit)}
                 className={cn(
-                "relative border p-4 pt-1 rounded-xl bg-sidebar dark:bg-sidebar transition-all",
-                isFocused && "shadow-xs",
-                showUsage && "rounded-t-none"
+                    "relative border p-4 pt-1 rounded-xl bg-sidebar dark:bg-sidebar transition-all",
+                    isFocused && "shadow-xs",
+                    showUsage && "rounded-t-none"
                 )}
             >
                 <FormField
