@@ -5,7 +5,6 @@ import { Fragment } from "@/generated/prisma/wasm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CodeIcon, Crown, CrownIcon, EyeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CodeView } from "@/components/code-view";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 import Link from "next/link";
@@ -63,7 +62,7 @@ export const ProjectView = ({ projectId }: Props) => {
                             </TabsTrigger>
                         </TabsList>
                         <div className="ml-auto flex items-center gap-x-2">
-                            <Button asChild variant="default" size="sm">
+                            <Button asChild variant="tertiary" size="sm">
                                 <Link href="/pricing">
                                     <CrownIcon /> Upgrade
                                 </Link>
