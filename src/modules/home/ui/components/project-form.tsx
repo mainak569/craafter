@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { cn } from "@/lib/utils";
 import { useTRPC } from "@/trpc/client";
+import { useClerk } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Form, FormField } from "@/components/ui/form";
 import { PROJECT_TEMPLATES } from "../../constants";
@@ -26,6 +27,7 @@ const ProjectForm = () => {
     const router = useRouter();
     const queryClient = useQueryClient();
     const trpc = useTRPC();
+    const clerk = useClerk();
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -42,8 +44,13 @@ const ProjectForm = () => {
             //? TODO: Invalidate usage status
         },
         onError: (error) => {
-            //? TODO: Redirect to pricing page if specific error
             toast.error(error.message);
+
+            if (error.data?.code === "UNAUTHORIZED") {
+                clerk.openSignIn();
+            }
+
+            //? TODO: Redirect to pricing page if specific error
         }
     }));
 
@@ -100,7 +107,7 @@ const ProjectForm = () => {
                     <div className="flex gap-x-2 items-end justify-between pt-2">
                         <div className="text-[10px] text-muted-foreground font-mono">
                             <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                                <span>&#8984;</span>Enter
+                                <span className="text-sm">&#8984;</span>Enter
                             </kbd>
                             &nbsp;to submit
                         </div>
