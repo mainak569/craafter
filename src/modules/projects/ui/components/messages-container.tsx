@@ -27,8 +27,7 @@ export const MessagesContainer = ({
     trpc.messages.getMany.queryOptions({
       projectId: projectId,
     },{
-      // TODO: Temporary live message update to refetch messages every 5 seconds 
-      refetchInterval: 5000,
+      refetchInterval: 2000, // 2 seconds
     })
   );
 
