@@ -6,7 +6,6 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { MessageCard } from "./message-card";
 import MessageForm from "./message-form";
 import { MessageLoading } from "./message-loading";
-import { set } from "date-fns";
 
 interface Props {
   projectId: string;
