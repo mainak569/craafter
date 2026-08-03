@@ -1,5 +1,13 @@
 import { Sandbox } from "@e2b/code-interpreter"
-import { openai, createAgent, createTool, createNetwork, type Tool, type Message, createState } from "@inngest/agent-kit";
+import {
+    gemini,
+    createAgent,
+    createTool,
+    createNetwork,
+    type Tool,
+    type Message,
+    createState,
+  } from "@inngest/agent-kit";
 
 import { inngest } from "./client";
 import { getSandbox, lastAssistantTextMessageContent, parseAgentOutput } from "./utils";
@@ -62,12 +70,13 @@ export const codeAgentFunction = inngest.createFunction(
       description: "An expert coding agent",
       system: PROMPT,
 
-      model: openai({ 
-        model: "gpt-4.1",
-        apiKey: process.env.OPENAI_API_KEY,
-        baseUrl: "https://models.github.ai/inference",
+      model: gemini({
+        model: "gemini-2.5-pro",
+        apiKey: process.env.GEMINI_API_KEY,
         defaultParameters: {
+          generationConfig: {
             temperature: 0.1,
+          },
         },
       }),
       tools: [
@@ -195,28 +204,30 @@ export const codeAgentFunction = inngest.createFunction(
         name: "fragment-title-generator",
         description: "A fragment title generator",
         system: FRAGMENT_TITLE_PROMPT,
-        model: openai({ 
-        model: "gpt-4.1",
-        apiKey: process.env.OPENAI_API_KEY,
-        baseUrl: "https://models.github.ai/inference",
-        defaultParameters: {
-            temperature: 0.1,
-        },
-      }),
+        model: gemini({
+            model: "gemini-2.5-pro",
+            apiKey: process.env.GEMINI_API_KEY,
+            defaultParameters: {
+              generationConfig: {
+                temperature: 0.1,
+              },
+            },
+        }),
     });
 
     const responseGenerator = createAgent({
         name: "response-generator",
         description: "A response generator",
         system: RESPONSE_PROMPT,
-        model: openai({ 
-        model: "gpt-4.1",
-        apiKey: process.env.OPENAI_API_KEY,
-        baseUrl: "https://models.github.ai/inference",
-        defaultParameters: {
-            temperature: 0.1,
-        },
-      }),
+        model: gemini({
+            model: "gemini-2.5-pro",
+            apiKey: process.env.GEMINI_API_KEY,
+            defaultParameters: {
+              generationConfig: {
+                temperature: 0.1,
+              },
+            },
+        }),
     });
 
     const { 
