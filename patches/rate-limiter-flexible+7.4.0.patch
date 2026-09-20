@@ -1,0 +1,13 @@
+diff --git a/node_modules/rate-limiter-flexible/lib/RateLimiterPrisma.js b/node_modules/rate-limiter-flexible/lib/RateLimiterPrisma.js
+index eb19986..f83f9c4 100644
+--- a/node_modules/rate-limiter-flexible/lib/RateLimiterPrisma.js
++++ b/node_modules/rate-limiter-flexible/lib/RateLimiterPrisma.js
+@@ -11,7 +11,7 @@ class RateLimiterPrisma extends RateLimiterStoreAbstract {
+ 
+     this.modelName = opts.tableName || 'RateLimiterFlexible';
+     this.prismaClient = opts.storeClient;
+-    this.clearExpiredByTimeout = opts.clearExpiredByTimeout || true;
++    this.clearExpiredByTimeout = opts.clearExpiredByTimeout ?? true;
+ 
+     if (!this.prismaClient) {
+       throw new Error('Prisma client is not provided');

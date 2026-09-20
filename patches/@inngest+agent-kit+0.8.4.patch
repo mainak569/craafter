@@ -1,0 +1,138 @@
+diff --git a/node_modules/@inngest/agent-kit/dist/chunk-QBAU6UTA.js b/node_modules/@inngest/agent-kit/dist/chunk-QBAU6UTA.js
+index db6ede2..07619bd 100644
+--- a/node_modules/@inngest/agent-kit/dist/chunk-QBAU6UTA.js
++++ b/node_modules/@inngest/agent-kit/dist/chunk-QBAU6UTA.js
+@@ -170,7 +170,7 @@ var stringifyError = (e) => {
+ };
+ var getStepTools = async () => {
+   const asyncCtx = await getAsyncCtx();
+-  return asyncCtx == null ? void 0 : asyncCtx.ctx.step;
++  return asyncCtx == null ? void 0 : (asyncCtx.ctx ?? asyncCtx.execution?.ctx)?.step;
+ };
+ var isInngestFn = (fn) => {
+   if (fn instanceof InngestFunction) {
+@@ -555,7 +555,9 @@ import "@inngest/ai";
+ import { z as z2 } from "zod";
+ import { zodToJsonSchema as zodToJsonSchema3 } from "zod-to-json-schema";
+ var requestParser3 = (_model2, messages, tools, tool_choice = "auto") => {
+-  const contents = messages.map((m) => messageToContent(m));
++  // Gemini 3.5 answers 503 "high demand" when the system prompt is sent as a user turn
++  const systemText = messages.filter((m) => m.role === "system").map((m) => messageContentToString(m.content)).join("\n\n");
++  const contents = messages.filter((m) => m.role !== "system").map((m) => messageToContent(m));
+   const functionDeclarations = tools.map((t) => ({
+     name: t.name,
+     description: t.description,
+@@ -564,9 +566,9 @@ var requestParser3 = (_model2, messages, tools, tool_choice = "auto") => {
+       geminiZodToJsonSchema(z2.object({}))
+     )
+   }));
+-  return __spreadValues({
++  return __spreadValues(__spreadValues({
+     contents
+-  }, tools.length > 0 ? {
++  }, systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}), tools.length > 0 ? {
+     tools: [
+       {
+         functionDeclarations
+@@ -622,7 +624,9 @@ var responseParser3 = (input) => {
+               name: content.functionCall.name,
+               input: content.functionCall.args,
+               type: "tool",
+-              id: content.functionCall.name
++              id: content.functionCall.name,
++              // Gemini 3: keep the signature so it can be replayed with the call
++              thoughtSignature: content.thoughtSignature
+             }
+           ]
+         });
+@@ -666,7 +670,9 @@ var messageToContent = (m) => {
+                 functionCall: {
+                   name: m.tools[0].name,
+                   args: m.tools[0].input
+-                }
++                },
++                // Gemini 3 rejects replayed tool calls without a signature; agent-kit does not keep them
++                thoughtSignature: m.tools[0].thoughtSignature || "skip_thought_signature_validator"
+               }
+             ]
+           };
+@@ -690,7 +696,9 @@ var messageToContent = (m) => {
+                 functionCall: {
+                   name: m.tools[0].name,
+                   args: m.tools[0].input
+-                }
++                },
++                // Gemini 3 rejects replayed tool calls without a signature; agent-kit does not keep them
++                thoughtSignature: m.tools[0].thoughtSignature || "skip_thought_signature_validator"
+               }
+             ]
+           };
+diff --git a/node_modules/@inngest/agent-kit/dist/index.cjs b/node_modules/@inngest/agent-kit/dist/index.cjs
+index 2a4c95f..6282eb7 100644
+--- a/node_modules/@inngest/agent-kit/dist/index.cjs
++++ b/node_modules/@inngest/agent-kit/dist/index.cjs
+@@ -258,7 +258,7 @@ var stringifyError = (e) => {
+ };
+ var getStepTools = async () => {
+   const asyncCtx = await (0, import_experimental.getAsyncCtx)();
+-  return asyncCtx == null ? void 0 : asyncCtx.ctx.step;
++  return asyncCtx == null ? void 0 : (asyncCtx.ctx ?? asyncCtx.execution?.ctx)?.step;
+ };
+ var isInngestFn = (fn) => {
+   if (fn instanceof import_InngestFunction.InngestFunction) {
+@@ -871,7 +871,9 @@ var import_ai4 = require("@inngest/ai");
+ var import_zod5 = require("zod");
+ var import_zod_to_json_schema3 = require("zod-to-json-schema");
+ var requestParser3 = (_model2, messages, tools, tool_choice = "auto") => {
+-  const contents = messages.map((m) => messageToContent(m));
++  // Gemini 3.5 answers 503 "high demand" when the system prompt is sent as a user turn
++  const systemText = messages.filter((m) => m.role === "system").map((m) => messageContentToString(m.content)).join("\n\n");
++  const contents = messages.filter((m) => m.role !== "system").map((m) => messageToContent(m));
+   const functionDeclarations = tools.map((t) => ({
+     name: t.name,
+     description: t.description,
+@@ -880,9 +882,9 @@ var requestParser3 = (_model2, messages, tools, tool_choice = "auto") => {
+       geminiZodToJsonSchema(import_zod5.z.object({}))
+     )
+   }));
+-  return __spreadValues({
++  return __spreadValues(__spreadValues({
+     contents
+-  }, tools.length > 0 ? {
++  }, systemText ? { systemInstruction: { parts: [{ text: systemText }] } } : {}), tools.length > 0 ? {
+     tools: [
+       {
+         functionDeclarations
+@@ -938,7 +940,9 @@ var responseParser3 = (input) => {
+               name: content.functionCall.name,
+               input: content.functionCall.args,
+               type: "tool",
+-              id: content.functionCall.name
++              id: content.functionCall.name,
++              // Gemini 3: keep the signature so it can be replayed with the call
++              thoughtSignature: content.thoughtSignature
+             }
+           ]
+         });
+@@ -982,7 +986,9 @@ var messageToContent = (m) => {
+                 functionCall: {
+                   name: m.tools[0].name,
+                   args: m.tools[0].input
+-                }
++                },
++                // Gemini 3 rejects replayed tool calls without a signature; agent-kit does not keep them
++                thoughtSignature: m.tools[0].thoughtSignature || "skip_thought_signature_validator"
+               }
+             ]
+           };
+@@ -1006,7 +1012,9 @@ var messageToContent = (m) => {
+                 functionCall: {
+                   name: m.tools[0].name,
+                   args: m.tools[0].input
+-                }
++                },
++                // Gemini 3 rejects replayed tool calls without a signature; agent-kit does not keep them
++                thoughtSignature: m.tools[0].thoughtSignature || "skip_thought_signature_validator"
+               }
+             ]
+           };
