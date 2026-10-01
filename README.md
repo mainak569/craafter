@@ -19,9 +19,17 @@ Describe an app in plain English, watch an AI agent build it in a cloud sandbox,
 [![Prisma](https://img.shields.io/badge/Prisma-v6-2d3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
 [![Clerk](https://img.shields.io/badge/Clerk-Auth_%26_Billing-6c47ff?style=flat-square&logo=clerk)](https://clerk.com/)
 
-[Features](#-key-features) • [Architecture](#-system-architecture) • [Tech Stack](#-technology-stack) • [Getting Started](#-getting-started) • [Environment Variables](#-environment-variables) • [Project Structure](#-project-structure) • [Known Limitations](#-known-limitations)
+[Demo](#-demo) • [Features](#-key-features) • [Architecture](#-system-architecture) • [Tech Stack](#-technology-stack) • [Getting Started](#-getting-started) • [Environment Variables](#-environment-variables) • [Project Structure](#-project-structure) • [Known Limitations](#-known-limitations)
 
 </div>
+
+---
+
+## 🎬 Demo
+
+https://github.com/user-attachments/assets/15be73a8-62a1-4906-ba56-25ecc00097df
+
+A two-minute walkthrough: the architecture, the agent building a kanban board in a sandbox, the app check catching a bug and the agent fixing it, and a follow-up edit.
 
 ---
 
