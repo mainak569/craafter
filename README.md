@@ -76,7 +76,9 @@ Optional: model overrides (`GEMINI_CODE_MODEL`, `GEMINI_SUMMARY_MODEL`, `GEMINI_
 The app uses the E2B template `craafter-nextjs-v3` (2 vCPU, 2 GB RAM). To build your own from `sandbox-templates/nextjs`:
 
 ```bash
-e2b template create your-template-name --dockerfile e2b.Dockerfile --cmd "/compile_page.sh" --memory-mb 2048 --cpu-count 2
+e2b template create your-template-name --dockerfile e2b.Dockerfile --cmd "/compile_page.sh" \
+  --ready-cmd "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 | grep -q 200" \
+  --memory-mb 2048 --cpu-count 2
 ```
 
 Then change the name in `Sandbox.create(...)` in `src/inngest/functions.ts`.
