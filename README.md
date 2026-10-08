@@ -55,6 +55,7 @@ Generated apps are frontend apps: the agent is instructed to use static/local da
   - Each generation runs in an E2B sandbox with a Next.js dev server and hot reload.
   - Preview iframe with refresh, copy-URL and open-in-new-tab controls.
   - Errors thrown in the preview (clicks, effects, async code) show up above it with a **Fix it** button.
+  - While a generation runs, the chat shows what the agent is doing right now (starting the sandbox, writing the code, testing the app in a browser, fixing what the check found, …).
 
 - **💻 Code Explorer**
   - Resizable split view with a file tree and path breadcrumbs.
@@ -87,25 +88,28 @@ flowchart TD
 
     subgraph Background Workflow [Inngest function: code-agent]
         InngestEngine --> Step1[Step: Create E2B sandbox]
-        Step1 --> Step2[Step: Load last 5 messages]
+        Step1 --> StepRestore[Step: Restore latest version's files]
+        StepRestore --> Step2[Step: Load last 5 messages]
         Step2 --> CodeAgent[Code agent - gemini-3.5-flash]
 
         subgraph Sandbox Execution [E2B sandbox]
             CodeAgent -->|terminal| BashExec[Run commands]
-            CodeAgent -->|createOrUpdateFiles| FSWrite[Write files]
+            CodeAgent -->|createOrUpdateFiles / editFile| FSWrite[Write files]
             CodeAgent -->|readFiles| FSRead[Read files]
             DevServer[Next.js dev server :3000] <-->|Hot reload| FSWrite
         end
 
-        CodeAgent -->|task_summary| TitleAgent[Title generator]
-        CodeAgent -->|task_summary| RespAgent[Response generator]
+        CodeAgent -->|task_summary| AppCheck[App check: auto-fix, render pages, headless Chromium, checks review]
+        AppCheck -->|Problems left, fix rounds left| CodeAgent
+        AppCheck -->|Passes, or out of fix rounds| TitleAgent[Title generator]
+        AppCheck -->|Passes, or out of fix rounds| RespAgent[Response generator]
         TitleAgent & RespAgent --> StepSave[Step: Save message & fragment]
         InngestEngine -.->|All retries failed| OnFailure[onFailure: save error message & refund credit]
     end
 
     StepSave --> DB
     OnFailure --> DB
-    NextApp -.->|Poll messages every 2s| TRPCRouter
+    NextApp -.->|Poll messages & status every 2s| TRPCRouter
     NextApp <-->|Preview iframe| DevServer
 ```
 
@@ -120,12 +124,14 @@ flowchart TD
 | **Styling** | [Tailwind CSS v4](https://tailwindcss.com/) | Utility-first styling |
 | **Components** | [shadcn/ui](https://ui.shadcn.com/) / [Radix UI](https://www.radix-ui.com/) | Accessible primitives |
 | **Agent Framework** | [@inngest/agent-kit](https://agent-kit.inngest.com/) | Agents, tools, networks (patched, see below) |
-| **LLM** | [Google Gemini](https://ai.google.dev/) | `gemini-3.5-flash` (code), `gemini-3.5-flash-lite` (title & reply) |
+| **LLM** | [Google Gemini](https://ai.google.dev/) | `gemini-3.5-flash` (code & fix), `gemini-3.5-flash-lite` (title, reply & checks review) |
+| **LLM fallback** | [Groq](https://console.groq.com/) (optional) | `openai/gpt-oss-20b` when Gemini is out of quota |
 | **Sandboxing** | [@e2b/code-interpreter](https://e2b.dev/) | Cloud sandboxes with public ports |
+| **App check** | [Playwright](https://playwright.dev/) (`playwright-core`) | Headless Chromium inside the sandbox for acceptance checks and the smoke test |
 | **Background Jobs** | [Inngest](https://www.inngest.com/) | Durable, retried step functions |
 | **API Layer** | [tRPC v11](https://trpc.io/) | Type-safe RPC |
 | **Client State** | [TanStack Query v5](https://tanstack.com/query) | Caching, polling, mutations |
-| **Database & ORM** | [Prisma v6](https://www.prisma.io/) + PostgreSQL | Projects, messages, fragments, usage |
+| **Database & ORM** | [Prisma v6](https://www.prisma.io/) + PostgreSQL | Projects, messages, fragments, usage, provider cooldowns |
 | **Auth & Billing** | [Clerk](https://clerk.com/) | Sign-in, route protection, subscription plans |
 | **Rate Limiting** | [rate-limiter-flexible](https://github.com/animir/node-rate-limiter-flexible) | PostgreSQL-backed credits |
 | **Code Viewer** | [Prism.js](https://prismjs.com/) | Syntax highlighting |
@@ -137,9 +143,10 @@ flowchart TD
 ```text
 craafter/
 ├── patches/
-│   └── @inngest+agent-kit+0.8.4.patch   # Gemini 3 + inngest 3.5x compatibility fixes (applied on npm install)
+│   ├── @inngest+agent-kit+0.8.4.patch   # Gemini 3 + inngest 3.5x compatibility fixes (applied on npm install)
+│   └── rate-limiter-flexible+7.4.0.patch # Lets clearExpiredByTimeout: false turn the cleanup timer off
 ├── prisma/
-│   ├── schema.prisma            # Project, Message, Fragment, Usage
+│   ├── schema.prisma            # Project, Message, Fragment, Usage, ProviderCooldown
 │   └── migrations/              # SQL migrations
 ├── public/                      # Logo and static assets
 ├── sandbox-templates/
@@ -167,16 +174,18 @@ craafter/
 │   ├── hooks/                   # Theme, mobile and scroll hooks
 │   ├── inngest/
 │   │   ├── client.ts            # Inngest client
-│   │   ├── functions.ts         # code-agent function (agents, tools, onFailure)
+│   │   ├── functions.ts         # code-agent function (agents, tools, app check loop, rollback, onFailure)
+│   │   ├── models.ts            # Models per role, Groq fallback and provider cooldown
+│   │   ├── sandbox-scripts.ts   # Node scripts run in the sandbox (smoke test, acceptance checks, auto-fix, syntax check)
 │   │   ├── types.ts             # Sandbox timeout
-│   │   └── utils.ts             # Sandbox and agent output helpers
+│   │   └── utils.ts             # Sandbox helpers, editFile matching, server and browser checks
 │   ├── lib/                     # Prisma client, credits (consume / refund / status), utils
 │   ├── modules/
 │   │   ├── home/                # Navbar, project form, projects list, prompt templates
 │   │   ├── messages/server/     # messages tRPC router (list, create)
 │   │   ├── projects/            # projects tRPC router + chat UI, preview, header, usage banner
 │   │   └── usage/server/        # usage tRPC router (credit status)
-│   ├── prompt.ts                # System prompts for the three agents
+│   ├── prompt.ts                # System prompts (code agent, title, reply, checks review)
 │   ├── trpc/                    # tRPC init, client, server helpers, app router
 │   ├── types.ts                 # Shared types (file tree)
 │   └── middleware.ts            # Clerk route protection
@@ -272,7 +281,7 @@ See `.env.example` for a ready-to-copy template.
 | `GEMINI_FIX_MODEL` | Model for fixing errors the app check finds (a stronger one fixes more, only these requests use it) | No | same as `GEMINI_CODE_MODEL` |
 | `GEMINI_REVIEW_MODEL` | Model for reviewing the acceptance checks | No | same as `GEMINI_SUMMARY_MODEL` |
 | `GROQ_API_KEY` | Fallback provider used when Gemini is out of quota (free key at console.groq.com) | No | — (fallback off) |
-| `GROQ_CODE_MODEL` / `GROQ_SUMMARY_MODEL` | Groq models per role | No | `openai/gpt-oss-20b` |
+| `GROQ_CODE_MODEL` / `GROQ_FIX_MODEL` / `GROQ_SUMMARY_MODEL` / `GROQ_REVIEW_MODEL` | Groq models per role (fix and review default to the code and summary model) | No | `openai/gpt-oss-20b` |
 | `GROQ_ROLES` | What the fallback may take over. Groq's free tier caps requests at 8,000 tokens/minute, which one code-agent request exceeds, so by default only the title, reply and checks review fall back. On a paid tier: `code,fix,summary,review` | No | `summary,review` |
 | `PROVIDER_COOLDOWN_MINUTES` | How long runs keep using the fallback after Gemini ran out | No | `120` |
 | `CODE_AGENT_FIX_ATTEMPTS` | Rounds the agent gets to fix errors the app check finds; each costs a few model requests, `0` only reports them | No | `3` (default) |
@@ -297,7 +306,7 @@ See `.env.example` for a ready-to-copy template.
 |---|---|---|
 | `dev` | `next dev --turbopack` | Next.js dev server |
 | `dev:inngest` | `npx inngest-cli@latest dev -u http://localhost:3000/api/inngest` | Local Inngest dev server |
-| `build` | `next build` | Production build |
+| `build` | `prisma migrate deploy && next build` | Apply database migrations, then production build |
 | `start` | `next start` | Run the production build |
 | `lint` | `next lint` | ESLint |
 | `postinstall` | `patch-package && prisma generate` | Apply dependency patches and generate the Prisma client |
@@ -312,15 +321,18 @@ See `.env.example` for a ready-to-copy template.
    - If the event can't be sent, the credit is refunded and an error message is saved.
 
 2. **Agent run** (`src/inngest/functions.ts`)
-   - Creates an E2B sandbox with a 15-minute timeout.
+   - Starts on Gemini, or on the Groq fallback for the roles it may take if Gemini ran out of quota within the last `PROVIDER_COOLDOWN_MINUTES`.
+   - Creates an E2B sandbox (`craafter-nextjs-v3`) with a 30-minute timeout, refreshed every time the run touches it, and adds the preview error reporter.
+   - Restores the latest fragment's files into the sandbox, and installs any packages it added, so follow-ups continue from the latest version.
    - Loads the previous 5 messages (excluding the current prompt, which is passed separately) as context.
-   - The code agent loops (max 20 iterations) using `terminal`, `createOrUpdateFiles` and `readFiles`, until it outputs `<task_summary>`.
+   - The code agent loops (max 30 iterations, including fix rounds) using `terminal`, `createOrUpdateFiles`, `editFile` and `readFiles`, until it outputs `<task_summary>`.
+   - Before the summary is accepted, the app check runs (see [Key Features](#-key-features)). Problems go back to the agent for up to `CODE_AGENT_FIX_ATTEMPTS` rounds; if a fix makes the app worse, the best version the checks saw is restored.
    - The title and response agents turn the summary into a fragment title and a reply.
-   - Saves an assistant message with a Fragment (files + sandbox URL). If there is no summary or no files, it saves an error message instead.
+   - Saves an assistant message with a Fragment (files + sandbox URL, plus `package.json` if packages were added). If there is no summary or no files, it saves an error message instead. If the app still has errors, the reply says so and the credit is refunded.
    - If the function fails after all retries, `onFailure` saves an error message and refunds the credit.
 
 3. **UI updates**
-   - The project page polls messages every 2 seconds, shows a loading state while the latest message is from the user, and opens the newest fragment in the Demo/Code panel.
+   - The project page polls messages and the project's status every 2 seconds, shows what the agent is doing while the latest message is from the user, and opens the newest fragment in the Demo/Code panel.
 
 ### Why `patches/@inngest+agent-kit+0.8.4.patch`?
 
